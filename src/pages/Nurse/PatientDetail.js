@@ -30,6 +30,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import DashboardLayout from '../../components/Layout/DashboardLayout';
 import { patientService } from '../../services/patientService';
 import { vitalService } from '../../services/vitalService';
+import { medicalRecordService } from '../../services/medicalRecordService';
 import useApi from '../../hooks/useApi';
 
 const NursePatientDetail = () => {
@@ -54,6 +55,13 @@ const NursePatientDetail = () => {
     }
   }, [patient, activeTab]);
 
+  // Refetch vitals when switching to vitals tab if empty
+  useEffect(() => {
+    if (activeTab === 1 && patient && vitals.length === 0) {
+      fetchVitals();
+    }
+  }, [activeTab]);
+
   const fetchPatientDetails = async () => {
     try {
       setError('');
@@ -77,12 +85,14 @@ const NursePatientDetail = () => {
         page: 1,
         limit: 50,
       });
+      console.log('🔍 Nurse - Vitals response:', response);
       if (response.status === 1) {
-        // Backend returns response.vitals directly
+        // Backend returns { status: 1, vitals: [...], pagination: {...} }
         setVitals(response.vitals || response.data?.vitals || []);
       }
     } catch (err) {
       console.error('Failed to fetch vitals:', err);
+      setVitals([]); // Set empty array on error
     } finally {
       setLoadingVitals(false);
     }
@@ -172,19 +182,24 @@ const NursePatientDetail = () => {
                   Patient ID: {patient.patientId}
                 </Typography>
               </Box>
-              <Box>
+              <Box display="flex" gap={2} alignItems="center">
                 <Chip
                   label={patient.type}
                   color={patient.type === 'IPD' ? 'primary' : 'default'}
-                  sx={{ mr: 1 }}
                 />
                 <Button
                   variant="contained"
                   startIcon={<Add />}
                   onClick={handleRecordVitals}
-                  sx={{ ml: 1 }}
                 >
                   Record Vitals
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<Add />}
+                  onClick={() => navigate(`/nurse/patients/${patient._id}/add-record`)}
+                >
+                  Create Report
                 </Button>
               </Box>
             </Box>
@@ -270,8 +285,10 @@ const NursePatientDetail = () => {
                         <TableRow>
                           <TableCell><strong>Assigned Doctor</strong></TableCell>
                           <TableCell>
-                            {patient.assignedDoctor
-                              ? `${patient.assignedDoctor.firstName || ''} ${patient.assignedDoctor.lastName || ''}`
+                            {patient.assignedDoctor && typeof patient.assignedDoctor === 'object'
+                              ? `${patient.assignedDoctor.firstName || ''} ${patient.assignedDoctor.lastName || ''}`.trim() || 'N/A'
+                              : patient.assignedDoctor
+                              ? String(patient.assignedDoctor)
                               : 'Not Assigned'}
                           </TableCell>
                         </TableRow>

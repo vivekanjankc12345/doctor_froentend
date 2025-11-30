@@ -233,11 +233,18 @@ const UserManagement = () => {
                               {user.roles && user.roles.length > 0 ? (
                                 <Box display="flex" gap={0.5} flexWrap="wrap">
                                   {user.roles.map((role, idx) => {
-                                    const roleName = typeof role === 'object' && role !== null ? role.name : role;
+                                    // Handle both object format {name, description} and string/ID format
+                                    let roleName = 'Unknown';
+                                    if (typeof role === 'object' && role !== null) {
+                                      roleName = role.name || role._id || 'Unknown';
+                                    } else if (typeof role === 'string') {
+                                      // If it's still an ID string, show a placeholder (shouldn't happen after backend fix)
+                                      roleName = role.length > 20 ? role.substring(0, 20) + '...' : role;
+                                    }
                                     return (
                                       <Chip
-                                        key={idx}
-                                        label={roleName || 'Unknown'}
+                                        key={role._id || role.id || idx}
+                                        label={roleName}
                                         size="small"
                                         color="primary"
                                         variant="outlined"

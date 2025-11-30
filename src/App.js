@@ -291,6 +291,14 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/nurse/patients/:patientId/add-record"
+        element={
+          <ProtectedRoute requiredRoles={['NURSE']}>
+            <DoctorAddMedicalRecord />
+          </ProtectedRoute>
+        }
+      />
       
       {/* Profile & Settings - Available to all authenticated users */}
       <Route

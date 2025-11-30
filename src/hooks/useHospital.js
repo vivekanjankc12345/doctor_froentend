@@ -62,15 +62,24 @@ const useHospital = () => {
 
   const updateHospitalStatus = useCallback(
     async (id, status) => {
+      if (!id || !status) {
+        const errorMsg = 'Hospital ID and status are required';
+        dispatch(setError(errorMsg));
+        throw new Error(errorMsg);
+      }
+
       dispatch(setLoading(true));
       dispatch(setError(null));
 
       try {
+        console.log('Calling updateHospitalStatus API:', { id, status });
         const response = await apiCall(
           hospitalService.updateHospitalStatus,
           id,
           status
         );
+
+        console.log('API Response:', response);
 
         if (response && response.status === 1) {
           // Update the hospital in the store if hospital data is provided
@@ -78,21 +87,24 @@ const useHospital = () => {
           if (response.hospital) {
             // Map backend response to match frontend structure
             const updatedHospital = {
-              _id: response.hospital.id,
+              _id: response.hospital.id || response.hospital._id,
               name: response.hospital.name,
               email: response.hospital.email,
               status: response.hospital.status,
               tenantId: response.hospital.tenantId,
             };
+            console.log('Updating hospital in store:', updatedHospital);
             dispatch(updateHospital(updatedHospital));
           }
           return response;
         } else {
           const errorMsg = response?.message || response?.error || 'Failed to update hospital status';
+          console.error('API returned error:', errorMsg, response);
           dispatch(setError(errorMsg));
           throw new Error(errorMsg);
         }
       } catch (err) {
+        console.error('Error in updateHospitalStatus:', err);
         const errorMessage =
           err.response?.data?.message ||
           err.response?.data?.error ||

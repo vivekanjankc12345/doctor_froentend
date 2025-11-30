@@ -76,6 +76,11 @@ const PatientManagement = () => {
       const response = await apiCall(patientService.searchPatients, filters);
 
       if (response.status === 1) {
+        console.log('🔍 Doctor - Patients received:', response.patients?.length || 0);
+        if (response.patients && response.patients.length > 0) {
+          console.log('🔍 First patient assignedNurse:', response.patients[0].assignedNurse);
+          console.log('🔍 First patient assignedDoctor:', response.patients[0].assignedDoctor);
+        }
         setPatients(response.patients || []);
         setTotal(response.pagination?.total || 0);
       }

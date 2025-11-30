@@ -19,6 +19,10 @@ import {
   TableRow,
   Paper,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -48,6 +52,10 @@ const PatientDetail = () => {
   const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
   const [loadingVitals, setLoadingVitals] = useState(false);
   const [loadingMedicalRecords, setLoadingMedicalRecords] = useState(false);
+  const [vitalDialogOpen, setVitalDialogOpen] = useState(false);
+  const [selectedVital, setSelectedVital] = useState(null);
+  const [medicalRecordDialogOpen, setMedicalRecordDialogOpen] = useState(false);
+  const [selectedMedicalRecord, setSelectedMedicalRecord] = useState(null);
 
   useEffect(() => {
     if (id) {
@@ -57,6 +65,13 @@ const PatientDetail = () => {
       fetchMedicalRecords();
     }
   }, [id]);
+
+  // Refetch vitals when switching to vitals tab
+  useEffect(() => {
+    if (activeTab === 1 && id && vitals.length === 0) {
+      fetchVitals();
+    }
+  }, [activeTab]);
 
   const fetchPatientDetails = async () => {
     try {
@@ -97,11 +112,14 @@ const PatientDetail = () => {
         page: 1,
         limit: 50,
       });
+      console.log('🔍 Vitals response:', response);
       if (response.status === 1) {
-        setVitals(response.data?.vitals || []);
+        // Backend returns { status: 1, vitals: [...], pagination: {...} }
+        setVitals(response.vitals || response.data?.vitals || []);
       }
     } catch (err) {
       console.error('Failed to fetch vitals:', err);
+      setVitals([]); // Set empty array on error
     } finally {
       setLoadingVitals(false);
     }
@@ -275,7 +293,9 @@ const PatientDetail = () => {
                     Assigned Nurse
                   </Typography>
                   <Typography variant="body1" fontWeight="medium">
-                    {patient.assignedNurse.firstName} {patient.assignedNurse.lastName}
+                    {patient.assignedNurse && typeof patient.assignedNurse === 'object'
+                      ? `${patient.assignedNurse.firstName || ''} ${patient.assignedNurse.lastName || ''}`.trim() || 'N/A'
+                      : String(patient.assignedNurse)}
                   </Typography>
                 </Grid>
               )}
@@ -428,7 +448,15 @@ const PatientDetail = () => {
                                 : '-'}
                             </TableCell>
                             <TableCell>
-                              <Button size="small">View</Button>
+                              <Button 
+                                size="small"
+                                onClick={() => {
+                                  setSelectedVital(vital);
+                                  setVitalDialogOpen(true);
+                                }}
+                              >
+                                View
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -481,7 +509,15 @@ const PatientDetail = () => {
                                 : '-'}
                             </TableCell>
                             <TableCell>
-                              <Button size="small">View</Button>
+                              <Button 
+                                size="small"
+                                onClick={() => {
+                                  setSelectedMedicalRecord(record);
+                                  setMedicalRecordDialogOpen(true);
+                                }}
+                              >
+                                View
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -493,6 +529,222 @@ const PatientDetail = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Vital Detail Dialog */}
+        <Dialog 
+          open={vitalDialogOpen} 
+          onClose={() => setVitalDialogOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            Vitals & Test Details - {selectedVital?.vitalId || 'N/A'}
+          </DialogTitle>
+          <DialogContent>
+            {selectedVital && (
+              <Box sx={{ pt: 2 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Date</Typography>
+                    <Typography variant="body1">
+                      {new Date(selectedVital.recordedAt).toLocaleString()}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Recorded By</Typography>
+                    <Typography variant="body1">
+                      {selectedVital.recordedBy?.firstName} {selectedVital.recordedBy?.lastName}
+                    </Typography>
+                  </Grid>
+                  
+                  {selectedVital.bloodPressure && (selectedVital.bloodPressure.systolic || selectedVital.bloodPressure.diastolic) && (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Blood Pressure (mmHg)</Typography>
+                      <Typography variant="body1">
+                        {selectedVital.bloodPressure.systolic || '-'}/{selectedVital.bloodPressure.diastolic || '-'}
+                      </Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedVital.pulse && (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Pulse (bpm)</Typography>
+                      <Typography variant="body1">{selectedVital.pulse}</Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedVital.temperature && (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Temperature</Typography>
+                      <Typography variant="body1">
+                        {selectedVital.temperature}°{selectedVital.temperatureUnit || 'F'}
+                      </Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedVital.respiratoryRate && (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Respiratory Rate (breaths/min)</Typography>
+                      <Typography variant="body1">{selectedVital.respiratoryRate}</Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedVital.oxygenSaturation && (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Oxygen Saturation (SpO2 %)</Typography>
+                      <Typography variant="body1">{selectedVital.oxygenSaturation}%</Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedVital.bloodSugar && (selectedVital.bloodSugar.fasting || selectedVital.bloodSugar.random || selectedVital.bloodSugar.postPrandial) && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="text.secondary">Blood Sugar (mg/dL)</Typography>
+                      <Box sx={{ mt: 1 }}>
+                        {selectedVital.bloodSugar.fasting && (
+                          <Typography variant="body2">Fasting: {selectedVital.bloodSugar.fasting}</Typography>
+                        )}
+                        {selectedVital.bloodSugar.random && (
+                          <Typography variant="body2">Random: {selectedVital.bloodSugar.random}</Typography>
+                        )}
+                        {selectedVital.bloodSugar.postPrandial && (
+                          <Typography variant="body2">Post Prandial: {selectedVital.bloodSugar.postPrandial}</Typography>
+                        )}
+                      </Box>
+                    </Grid>
+                  )}
+                  
+                  {selectedVital.hba1c && (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">HbA1c (%)</Typography>
+                      <Typography variant="body1">{selectedVital.hba1c}%</Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedVital.weight && (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Weight (kg)</Typography>
+                      <Typography variant="body1">{selectedVital.weight}</Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedVital.height && (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">Height (cm)</Typography>
+                      <Typography variant="body1">{selectedVital.height}</Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedVital.bmi && (
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="subtitle2" color="text.secondary">BMI</Typography>
+                      <Typography variant="body1">{selectedVital.bmi}</Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedVital.notes && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="text.secondary">Notes</Typography>
+                      <Typography variant="body2">{selectedVital.notes}</Typography>
+                    </Grid>
+                  )}
+                </Grid>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setVitalDialogOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Medical Record Detail Dialog */}
+        <Dialog 
+          open={medicalRecordDialogOpen} 
+          onClose={() => setMedicalRecordDialogOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            Medical Record - {selectedMedicalRecord?.medicalRecordId || selectedMedicalRecord?.recordId || 'N/A'}
+          </DialogTitle>
+          <DialogContent>
+            {selectedMedicalRecord && (
+              <Box sx={{ pt: 2 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="text.secondary">Visit Date</Typography>
+                    <Typography variant="body1">
+                      {new Date(selectedMedicalRecord.visitDate || selectedMedicalRecord.recordedAt).toLocaleDateString()}
+                    </Typography>
+                  </Grid>
+                  
+                  {selectedMedicalRecord.chiefComplaint && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="text.secondary">Chief Complaint</Typography>
+                      <Typography variant="body1">{selectedMedicalRecord.chiefComplaint}</Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedMedicalRecord.diagnosis && selectedMedicalRecord.diagnosis.length > 0 && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="text.secondary">Diagnosis</Typography>
+                      <Box sx={{ mt: 1 }}>
+                        {selectedMedicalRecord.diagnosis.map((d, i) => (
+                          <Chip 
+                            key={i} 
+                            label={d.description} 
+                            size="small" 
+                            sx={{ mr: 0.5, mb: 0.5 }}
+                            color={d.type === 'PRIMARY' ? 'primary' : 'default'}
+                          />
+                        ))}
+                      </Box>
+                    </Grid>
+                  )}
+                  
+                  {selectedMedicalRecord.treatment?.plan && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="text.secondary">Treatment Plan</Typography>
+                      <Typography variant="body2">{selectedMedicalRecord.treatment.plan}</Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedMedicalRecord.clinicalNotes && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="text.secondary">Clinical Notes</Typography>
+                      <Typography variant="body2">{selectedMedicalRecord.clinicalNotes}</Typography>
+                    </Grid>
+                  )}
+                  
+                  {selectedMedicalRecord.physicalExamination && Object.keys(selectedMedicalRecord.physicalExamination).some(key => selectedMedicalRecord.physicalExamination[key]) && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" color="text.secondary">Physical Examination</Typography>
+                      <Box sx={{ mt: 1 }}>
+                        {selectedMedicalRecord.physicalExamination.general && (
+                          <Typography variant="body2"><strong>General:</strong> {selectedMedicalRecord.physicalExamination.general}</Typography>
+                        )}
+                        {selectedMedicalRecord.physicalExamination.cardiovascular && (
+                          <Typography variant="body2"><strong>Cardiovascular:</strong> {selectedMedicalRecord.physicalExamination.cardiovascular}</Typography>
+                        )}
+                        {selectedMedicalRecord.physicalExamination.respiratory && (
+                          <Typography variant="body2"><strong>Respiratory:</strong> {selectedMedicalRecord.physicalExamination.respiratory}</Typography>
+                        )}
+                        {selectedMedicalRecord.physicalExamination.abdominal && (
+                          <Typography variant="body2"><strong>Abdominal:</strong> {selectedMedicalRecord.physicalExamination.abdominal}</Typography>
+                        )}
+                        {selectedMedicalRecord.physicalExamination.neurological && (
+                          <Typography variant="body2"><strong>Neurological:</strong> {selectedMedicalRecord.physicalExamination.neurological}</Typography>
+                        )}
+                      </Box>
+                    </Grid>
+                  )}
+                </Grid>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setMedicalRecordDialogOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </DashboardLayout>
   );

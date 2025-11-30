@@ -204,8 +204,10 @@ const NurseDashboard = () => {
                             />
                           </TableCell>
                           <TableCell>
-                            {patient.assignedDoctor 
-                              ? `${patient.assignedDoctor.firstName || ''} ${patient.assignedDoctor.lastName || ''}`
+                            {patient.assignedDoctor && typeof patient.assignedDoctor === 'object'
+                              ? `${patient.assignedDoctor.firstName || ''} ${patient.assignedDoctor.lastName || ''}`.trim() || 'N/A'
+                              : patient.assignedDoctor
+                              ? String(patient.assignedDoctor)
                               : 'Not Assigned'}
                           </TableCell>
                           <TableCell>

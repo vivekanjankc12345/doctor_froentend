@@ -225,42 +225,86 @@ const AddMedicalRecord = () => {
       setError('');
       setSuccess('');
 
-      // Prepare vitals data
+      console.log('🔍 Saving vitals for patient:', patientId);
+      console.log('🔍 Vitals data:', vitalsData);
+
+      // Prepare vitals data - only include fields that have values
       const vitalData = {
         patient: patientId,
-        bloodPressure: vitalsData.bloodPressure.systolic && vitalsData.bloodPressure.diastolic
-          ? {
-              systolic: parseFloat(vitalsData.bloodPressure.systolic),
-              diastolic: parseFloat(vitalsData.bloodPressure.diastolic)
-            }
-          : undefined,
-        pulse: vitalsData.pulse ? parseFloat(vitalsData.pulse) : undefined,
-        temperature: vitalsData.temperature ? parseFloat(vitalsData.temperature) : undefined,
-        temperatureUnit: vitalsData.temperatureUnit,
-        respiratoryRate: vitalsData.respiratoryRate ? parseFloat(vitalsData.respiratoryRate) : undefined,
-        oxygenSaturation: vitalsData.oxygenSaturation ? parseFloat(vitalsData.oxygenSaturation) : undefined,
-        bloodSugar: (vitalsData.bloodSugar.fasting || vitalsData.bloodSugar.random || vitalsData.bloodSugar.postPrandial)
-          ? {
-              fasting: vitalsData.bloodSugar.fasting ? parseFloat(vitalsData.bloodSugar.fasting) : undefined,
-              random: vitalsData.bloodSugar.random ? parseFloat(vitalsData.bloodSugar.random) : undefined,
-              postPrandial: vitalsData.bloodSugar.postPrandial ? parseFloat(vitalsData.bloodSugar.postPrandial) : undefined
-            }
-          : undefined,
-        hba1c: vitalsData.hba1c ? parseFloat(vitalsData.hba1c) : undefined,
-        weight: vitalsData.weight ? parseFloat(vitalsData.weight) : undefined,
-        height: vitalsData.height ? parseFloat(vitalsData.height) : undefined,
-        notes: vitalsData.notes || undefined
+        visitType: vitalsData.visitType || 'OPD'
       };
 
+      // Add blood pressure if either systolic or diastolic is provided
+      if (vitalsData.bloodPressure && (vitalsData.bloodPressure.systolic || vitalsData.bloodPressure.diastolic)) {
+        vitalData.bloodPressure = {};
+        if (vitalsData.bloodPressure.systolic) {
+          vitalData.bloodPressure.systolic = parseFloat(vitalsData.bloodPressure.systolic);
+        }
+        if (vitalsData.bloodPressure.diastolic) {
+          vitalData.bloodPressure.diastolic = parseFloat(vitalsData.bloodPressure.diastolic);
+        }
+      }
+
+      // Add other fields only if they have values
+      if (vitalsData.pulse && vitalsData.pulse.trim() !== '') {
+        vitalData.pulse = parseFloat(vitalsData.pulse);
+      }
+      if (vitalsData.temperature && vitalsData.temperature.trim() !== '') {
+        vitalData.temperature = parseFloat(vitalsData.temperature);
+      }
+      if (vitalsData.temperatureUnit) {
+        vitalData.temperatureUnit = vitalsData.temperatureUnit;
+      }
+      if (vitalsData.respiratoryRate && vitalsData.respiratoryRate.trim() !== '') {
+        vitalData.respiratoryRate = parseFloat(vitalsData.respiratoryRate);
+      }
+      if (vitalsData.oxygenSaturation && vitalsData.oxygenSaturation.trim() !== '') {
+        vitalData.oxygenSaturation = parseFloat(vitalsData.oxygenSaturation);
+      }
+
+      // Add blood sugar if any value is provided
+      if (vitalsData.bloodSugar && (vitalsData.bloodSugar.fasting || vitalsData.bloodSugar.random || vitalsData.bloodSugar.postPrandial)) {
+        vitalData.bloodSugar = {};
+        if (vitalsData.bloodSugar.fasting && vitalsData.bloodSugar.fasting.trim() !== '') {
+          vitalData.bloodSugar.fasting = parseFloat(vitalsData.bloodSugar.fasting);
+        }
+        if (vitalsData.bloodSugar.random && vitalsData.bloodSugar.random.trim() !== '') {
+          vitalData.bloodSugar.random = parseFloat(vitalsData.bloodSugar.random);
+        }
+        if (vitalsData.bloodSugar.postPrandial && vitalsData.bloodSugar.postPrandial.trim() !== '') {
+          vitalData.bloodSugar.postPrandial = parseFloat(vitalsData.bloodSugar.postPrandial);
+        }
+      }
+
+      if (vitalsData.hba1c && vitalsData.hba1c.trim() !== '') {
+        vitalData.hba1c = parseFloat(vitalsData.hba1c);
+      }
+      if (vitalsData.weight && vitalsData.weight.trim() !== '') {
+        vitalData.weight = parseFloat(vitalsData.weight);
+      }
+      if (vitalsData.height && vitalsData.height.trim() !== '') {
+        vitalData.height = parseFloat(vitalsData.height);
+      }
+      if (vitalsData.notes && vitalsData.notes.trim() !== '') {
+        vitalData.notes = vitalsData.notes.trim();
+      }
+
+      console.log('🔍 Prepared vital data to send:', vitalData);
+
       const response = await apiCall(vitalService.recordVitals, vitalData);
+      console.log('🔍 Response from server:', response);
+      
       if (response.status === 1) {
         setSuccess('Vitals recorded successfully!');
         setTimeout(() => {
           navigate(`/doctor/patients/${patientId}`);
         }, 2000);
+      } else {
+        setError(response.message || 'Failed to record vitals');
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.message || 'Failed to record vitals';
+      console.error('🔍 Error recording vitals:', err);
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to record vitals';
       setError(errorMessage);
     }
   };

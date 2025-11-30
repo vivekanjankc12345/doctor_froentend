@@ -168,23 +168,40 @@ const HospitalManagement = () => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setSelectedHospital(null);
+    // Don't clear selectedHospital here - it's needed for the dialog
   };
 
   const handleStatusChange = (status) => {
+    if (!selectedHospital) {
+      console.error('No hospital selected');
+      return;
+    }
     setNewStatus(status);
     setStatusDialogOpen(true);
-    handleMenuClose();
+    setAnchorEl(null); // Close menu but keep selectedHospital
   };
 
   const confirmStatusChange = async () => {
-    if (!selectedHospital || !newStatus) return;
+    if (!selectedHospital || !newStatus) {
+      console.error('Missing data:', { selectedHospital, newStatus });
+      dispatch(setError('Missing hospital or status information'));
+      return;
+    }
 
     try {
       setSuccess('');
-      setError('');
+      dispatch(setError(null));
+      console.log('Updating hospital status:', {
+        hospitalId: selectedHospital._id,
+        hospitalName: selectedHospital.name,
+        currentStatus: selectedHospital.status,
+        newStatus: newStatus
+      });
+      
       await updateHospitalStatus(selectedHospital._id, newStatus);
-      setSuccess(`Hospital status updated to ${newStatus} successfully`);
+      
+      setSuccess(`Hospital status updated to ${statusLabels[newStatus] || newStatus} successfully`);
+      
       // Refresh the hospitals list
       await fetchHospitals({
         page: pagination.page,
@@ -192,14 +209,18 @@ const HospitalManagement = () => {
         search: filters.search,
         status: filters.status,
       });
+      
       setStatusDialogOpen(false);
-      setSelectedHospital(null);
       setNewStatus('');
+      setSelectedHospital(null); // Clear after dialog closes
+      
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       // Error is handled by the hook and will be displayed
       console.error('Error updating hospital status:', err);
+      const errorMessage = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to update hospital status';
+      dispatch(setError(errorMessage));
     }
   };
 
@@ -460,13 +481,22 @@ const HospitalManagement = () => {
           )}
         </Menu>
 
-        <Dialog open={statusDialogOpen} onClose={() => !loading && setStatusDialogOpen(false)}>
+        <Dialog 
+          open={statusDialogOpen} 
+          onClose={() => {
+            if (!loading) {
+              setStatusDialogOpen(false);
+              setSelectedHospital(null);
+              setNewStatus('');
+            }
+          }}
+        >
           <DialogTitle>Confirm Status Change</DialogTitle>
           <DialogContent>
             <Typography>
               Are you sure you want to change the status of{' '}
-              <strong>{selectedHospital?.name}</strong> from{' '}
-              <strong>{statusLabels[selectedHospital?.status] || selectedHospital?.status}</strong> to{' '}
+              <strong>{selectedHospital?.name || 'this hospital'}</strong> from{' '}
+              <strong>{statusLabels[selectedHospital?.status] || selectedHospital?.status || 'current status'}</strong> to{' '}
               <strong>{statusLabels[newStatus] || newStatus}</strong>?
             </Typography>
             {newStatus === 'ACTIVE' && (
@@ -481,14 +511,36 @@ const HospitalManagement = () => {
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setStatusDialogOpen(false)} disabled={loading}>
+            <Button 
+              onClick={() => {
+                setStatusDialogOpen(false);
+                setSelectedHospital(null);
+                setNewStatus('');
+              }} 
+              disabled={loading}
+            >
               Cancel
             </Button>
             <Button
-              onClick={confirmStatusChange}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Confirm button clicked', { 
+                  selectedHospital: selectedHospital?._id, 
+                  newStatus, 
+                  loading,
+                  hospitalName: selectedHospital?.name 
+                });
+                if (!loading && selectedHospital && newStatus) {
+                  confirmStatusChange();
+                } else {
+                  console.warn('Button click ignored:', { loading, selectedHospital: !!selectedHospital, newStatus });
+                }
+              }}
               variant="contained"
               color={newStatus === 'ACTIVE' ? 'success' : newStatus === 'INACTIVE' ? 'error' : 'primary'}
-              disabled={loading}
+              disabled={loading || !selectedHospital || !newStatus}
+              type="button"
             >
               {loading ? <CircularProgress size={20} /> : 'Confirm'}
             </Button>

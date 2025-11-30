@@ -323,7 +323,11 @@ const Profile = () => {
                     <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                       Roles
                     </Typography>
-                    {user?.roles && user.roles.length > 0 ? (
+                    {loadingProfile ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Loading...
+                      </Typography>
+                    ) : user?.roles && user.roles.length > 0 ? (
                       <Box display="flex" gap={1} flexWrap="wrap">
                         {user.roles.map((role, index) => {
                           // Backend should return role objects with name property
@@ -344,7 +348,7 @@ const Profile = () => {
                           }
                           return (
                             <Chip
-                              key={index}
+                              key={role._id || role.id || index}
                               label={roleName}
                               size="small"
                               color="primary"

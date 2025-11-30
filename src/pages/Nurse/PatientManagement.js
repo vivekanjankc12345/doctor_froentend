@@ -59,6 +59,11 @@ const NursePatientManagement = () => {
       const response = await apiCall(patientService.searchPatients, filters);
 
       if (response.status === 1) {
+        console.log('🔍 Nurse - Patients received:', response.patients?.length || 0);
+        if (response.patients && response.patients.length > 0) {
+          console.log('🔍 First patient assignedNurse:', response.patients[0].assignedNurse);
+          console.log('🔍 First patient assignedDoctor:', response.patients[0].assignedDoctor);
+        }
         // Backend already filters by assignedNurse via ABAC, so use all returned patients
         // The ABAC filter ensures only assigned patients are returned
         setPatients(response.patients || []);
@@ -201,8 +206,10 @@ const NursePatientManagement = () => {
                               />
                             </TableCell>
                             <TableCell>
-                              {patient.assignedDoctor
-                                ? `${patient.assignedDoctor.firstName || ''} ${patient.assignedDoctor.lastName || ''}`
+                              {patient.assignedDoctor && typeof patient.assignedDoctor === 'object'
+                                ? `${patient.assignedDoctor.firstName || ''} ${patient.assignedDoctor.lastName || ''}`.trim() || 'N/A'
+                                : patient.assignedDoctor
+                                ? String(patient.assignedDoctor)
                                 : 'Not Assigned'}
                             </TableCell>
                             <TableCell align="right">
